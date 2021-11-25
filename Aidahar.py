@@ -16,9 +16,13 @@ DARKGREEN = (10, 50, 10)
 BUFFER_DISTANCE = 100
 PLAYER_STARTING_SCORE = 0
 PLAYER_STARTING_LIVE = 5
+BIRD_STARTING_VELOCITY = 5
 
 player_score = PLAYER_STARTING_SCORE
 player_live = PLAYER_STARTING_LIVE
+dragon_velocity = 5
+bird_velocity = BIRD_STARTING_VELOCITY
+acceleration = 0.5
 
 # main surface
 display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -59,21 +63,72 @@ live_text = main_font.render("Jany: " + str(player_live), True, RED)
 live_text_rect = live_text.get_rect()
 live_text_rect.topleft = (WINDOW_WIDTH-(live_background_rect.width), 20)
 
+game_over_text = main_font.render("GAMEOVER", True, GREEN, DARKGREEN)
+game_over_rect = game_over_text.get_rect()
+game_over_rect.center = (WINDOW_WIDTH//2, WINDOW_HEIGHT//2)
+
+game_continue_text = main_font.render("PRESS ANY KEY", True, GREEN)
+game_continue_rect = game_continue_text.get_rect()
+game_continue_rect.center = (WINDOW_WIDTH//2, WINDOW_HEIGHT//2+100)
+
 # sounds and musics
 pygame.mixer.music.load('music.wav')
 sound1 = pygame.mixer.Sound('sound_1.wav')
 sound2 = pygame.mixer.Sound('sound_2.wav')
+sound2.set_volume(0.1)
 
 FPS = 60
 clock = pygame.time.Clock()
 
 pygame.mixer.music.play(-1, 0.0)
 # main loop
+fl_pause = False
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_UP] and dragon_rect.top > HEADER_HEIGHT:
+        dragon_rect.y -= dragon_velocity
+    elif keys[pygame.K_DOWN] and dragon_rect.bottom < WINDOW_HEIGHT:
+        dragon_rect.y += dragon_velocity
+
+    bird_image_rect.centerx -= bird_velocity
+    if bird_image_rect.centerx < 0:
+        bird_image_rect.center = ((WINDOW_WIDTH+BUFFER_DISTANCE), random.randint(HEADER_HEIGHT+25, WINDOW_HEIGHT-25))
+        player_live -= 1
+        sound2.play()
+
+    if dragon_rect.colliderect(bird_image_rect):
+        player_score += 1
+        sound1.play()
+        bird_image_rect.center = ((WINDOW_WIDTH+BUFFER_DISTANCE), random.randint(HEADER_HEIGHT+25, WINDOW_HEIGHT-25))
+        bird_velocity += acceleration
+
+    if player_live == 0:
+        fl_pause = True
+        pygame.mixer.music.stop()
+        live_text = main_font.render("Jany: " + str(player_live), True, RED)
+        display_surface.blit(live_text, live_text_rect)
+        pygame.display.update()
+        while fl_pause:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    fl_pause = False
+                    running = False
+                if event.type == pygame.KEYDOWN:
+                    player_score = PLAYER_STARTING_SCORE
+                    player_live = PLAYER_STARTING_LIVE
+                    bird_velocity = BIRD_STARTING_VELOCITY
+                    pygame.mixer.music.play(-1, 0.0) 
+                    fl_pause = False
+
+            display_surface.blit(game_over_text, game_over_rect)
+            display_surface.blit(game_continue_text, game_continue_rect)
+            pygame.display.update()
+
 
     display_surface.blit(background, (0,0))
     display_surface.blit(score_backround, score_background_rect)
@@ -82,9 +137,13 @@ while running:
     display_surface.blit(dragon_image, dragon_rect)
     display_surface.blit(bird_image, bird_image_rect)
     
+    score_text = main_font.render("Upai: " + str(player_score), True, RED)
+    live_text = main_font.render("Jany: " + str(player_live), True, RED)
     display_surface.blit(score_text, score_text_rect)
     display_surface.blit(game_name, game_name_rect)
     display_surface.blit(live_text, live_text_rect)
+    
+
 
     pygame.display.update()
     clock.tick(FPS)
